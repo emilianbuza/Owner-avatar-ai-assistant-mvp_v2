@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Inbox Assistant</title>
+  <style>
+    :root{
+      --brand:#6366f1;--brand-dark:#4f46e5;--brand-light:#818cf8;
+      --urgent:#ef4444;--urgent-bg:#fee2e2;--urgent-border:#fca5a5;
+      --important:#f59e0b;--important-bg:#fef3c7;--important-border:#fcd34d;
+      --later:#10b981;--later-bg:#d1fae5;--later-border:#6ee7b7;
+      --success:#22c55e;
+      --bg:#fafaf9;--card:#ffffff;--text:#1f2937;--text-light:#6b7280;--text-muted:#9ca3af;
+      --border:#e5e7eb;--shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-lg:0 10px 40px rgba(0,0,0,0.12);
+    }
+    [data-theme="dark"]{
+      --brand:#818cf8;--brand-dark:#6366f1;--brand-light:#a5b4fc;
+      --urgent:#f87171;--urgent-bg:#7f1d1d;--urgent-border:#b91c1c;
+      --important:#fbbf24;--important-bg:#78350f;--important-border:#a16207;
+      --later:#34d399;--later-bg:#064e3b;--later-border:#047857;
+      --success:#4ade80;
+      --bg:#111827;--card:#1f2937;--text:#f9fafb;--text-light:#d1d5db;--text-muted:#9ca3af;
+      --border:#374151;--shadow:0 1px 3px rgba(0,0,0,0.3);--shadow-lg:0 10px 40px rgba(0,0,0,0.4);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;transition:background 0.3s}
+    header{background:var(--brand);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow-lg)}
+    header .logo{font-weight:700;font-size:20px;display:flex;align-items:center;gap:8px}
+    .header-actions{display:flex;gap:12px;align-items:center}
+    .progress-badge{background:rgba(255,255,255,0.2);padding:6px 14px;border-radius:10px;font-weight:600;font-size:13px}
+    .icon-btn{background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:18px;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
+    .icon-btn:hover{background:rgba(255,255,255,0.25);transform:scale(1.05)}
+    main{max-width:1400px;margin:0 auto;padding:20px}
+    
+    .quick-add-section{background:var(--card);border-radius:16px;padding:20px;margin-bottom:24px;box-shadow:var(--shadow-lg);border:2px solid var(--border)}
+    .quick-add-section.focus{border-color:var(--brand)}
+    .quick-add-title{font-size:18px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .quick-add-input{width:100%;border:none;font-size:16px;padding:12px 0;background:transparent;color:var(--text);outline:none}
+    .quick-add-input::placeholder{color:var(--text-muted)}
+    .quick-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .quick-btn{background:var(--bg);border:1px solid var(--border);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:6px}
+    .quick-btn:hover{border-color:var(--brand);background:var(--brand);color:#fff}
+    .quick-btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .quick-btn.primary:hover{background:var(--brand-dark)}
+    
+    .suggestions{background:var(--important-bg);border:1px solid var(--important-border);border-radius:12px;padding:16px;margin-bottom:20px;display:none}
+    .suggestions.show{display:block}
+    .suggestions-title{font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;color:var(--important)}
+    .suggestion-item{background:var(--card);border:1px solid var(--border);padding:10px 14px;border-radius:8px;margin-top:8px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:space-between}
+    .suggestion-item:hover{border-color:var(--brand);transform:translateX(4px)}
+    
+    .view-toggle{display:flex;gap:8px;margin-bottom:16px;justify-content:center}
+    .view-btn{background:var(--bg);border:2px solid var(--border);padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s}
+    .view-btn.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+    
+    .timeline{display:none}
+    .timeline.active{display:block}
+    .timeline-hour{font-size:13px;font-weight:700;color:var(--text-muted);margin:16px 0 8px 0;display:flex;align-items:center;gap:12px}
+    .timeline-hour::after{content:'';flex:1;height:1px;background:var(--border)}
+    .timeline-item{background:var(--card);border-left:4px solid var(--brand);border-radius:12px;padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow);transition:all 0.2s;cursor:pointer}
+    .timeline-item:hover{transform:translateX(4px);box-shadow:var(--shadow-lg)}
+    .timeline-item.urgent{border-left-color:var(--urgent)}
+    .timeline-item.important{border-left-color:var(--important)}
+    
+    .tasks-view{display:block}
+    .tasks-view.hide{display:none}
+    .tasks{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+    .task{background:var(--card);border-left:6px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);transition:all 0.2s;cursor:pointer;position:relative;height:100%;display:flex;flex-direction:column}
+    .task:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+    .task.removing{opacity:0;transform:translateY(8px)}
+    .task.celebrating{animation:celebrate 0.5s ease}
+    .task.priority-1{border-left-color:var(--urgent);background:linear-gradient(to right,var(--urgent-bg) 0%,var(--card) 12%)}
+    .task.priority-2{border-left-color:var(--important);background:linear-gradient(to right,var(--important-bg) 0%,var(--card) 12%)}
+    .task.priority-3{border-left-color:var(--later);background:linear-gradient(to right,var(--later-bg) 0%,var(--card) 12%)}
+    .task-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .task-icon{font-size:28px;flex-shrink:0}
+    .task-content{flex:1}
+    .task-title{font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text);line-height:1.3}
+    .task-meta{display:flex;gap:6px;flex-wrap:wrap;font-size:12px}
+    .badge{padding:4px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;font-size:11px}
+    .badge.p1{background:var(--urgent-bg);color:var(--urgent)}
+    .badge.p2{background:var(--important-bg);color:var(--important)}
+    .badge.p3{background:var(--later-bg);color:var(--later)}
+    .badge.time{background:var(--bg);color:var(--brand)}
+    .task-reason{color:var(--text-light);font-size:13px;margin-top:8px;line-height:1.5;flex:1}
+    .task-actions{display:flex;gap:6px;margin-top:12px;opacity:0;transition:opacity 0.2s;flex-wrap:wrap}
+    .task:hover .task-actions{opacity:1}
+    .task-btn{background:var(--bg);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:4px;white-space:nowrap}
+    .task-btn:hover{border-color:var(--brand)}
+    .task-btn.done{background:var(--success);color:#fff;border-color:var(--success)}
+    .task-btn.done:hover{background:#16a34a}
+    .task-btn.snooze{background:var(--important-bg);color:var(--important);border-color:var(--important-border)}
+    
+    .empty-state{text-align:center;padding:60px 20px;color:var(--text-muted);grid-column:1/-1}
+    .empty-state .emoji{font-size:64px;margin-bottom:16px}
+    .empty-state h3{font-size:22px;font-weight:700;margin-bottom:12px;color:var(--text)}
+    .empty-state p{font-size:15px;margin-bottom:24px;line-height:1.7}
+    .empty-state .quick-actions{justify-content:center;margin-top:20px}
+    
+    .onboarding{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+    .onboarding.show{display:flex}
+    .onboarding-content{background:var(--card);border-radius:20px;padding:40px;max-width:600px;box-shadow:var(--shadow-lg);text-align:center}
+    .onboarding-content h2{font-size:28px;margin-bottom:16px}
+    .onboarding-content p{font-size:16px;color:var(--text-light);margin-bottom:24px;line-height:1.7}
+    .onboarding-steps{display:grid;gap:16px;margin-bottom:32px;text-align:left}
+    .onboarding-step{display:flex;gap:16px;align-items:flex-start;background:var(--bg);padding:16px;border-radius:12px}
+    .onboarding-step .num{background:var(--brand);color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+    .onboarding-step div{flex:1}
+    .onboarding-step strong{display:block;margin-bottom:4px;font-size:15px}
+    .onboarding-step span{font-size:14px;color:var(--text-muted)}
+    
+    .toast{position:fixed;top:24px;right:24px;background:var(--success);color:#fff;padding:16px 22px;border-radius:12px;box-shadow:var(--shadow-lg);z-index:1000;font-weight:600;font-size:15px;animation:slideIn 0.3s ease;display:flex;align-items:center;gap:10px}
+    .shortcuts-hint{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--border);padding:12px 16px;border-radius:10px;font-size:12px;color:var(--text-muted);box-shadow:var(--shadow);display:none}
+    .shortcuts-hint.show{display:block}
+    kbd{background:var(--bg);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:11px}
+    
+    @keyframes celebrate{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+    @keyframes slideIn{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}
+    ::selection{background:var(--brand);color:#fff}
+    html{scroll-behavior:smooth}
+    
+    .loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+    .loading-overlay.show{display:flex}
+    .spinner{border:4px solid rgba(255,255,255,0.3);border-top:4px solid #fff;border-radius:50%;width:48px;height:48px;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    
+    @media(max-width:1200px){
+      .tasks{grid-template-columns:repeat(2,1fr)}
+    }
+    
+    @media(max-width:768px){
+      header .logo{font-size:18px}
+      .quick-add-title{font-size:16px}
+      .tasks{grid-template-columns:1fr}
+      .task-title{font-size:15px}
+    }
+  </style>
+</head>
+<body>
+  <div class="onboarding" id="onboarding">
+    <div class="onboarding-content">
+      <h2>🎯 Willkommen bei deinem AI Assistant!</h2>
+      <p>In 3 einfachen Schritten zu mehr Produktivität:</p>
+      <div class="onboarding-steps">
+        <div class="onboarding-step">
+          <div class="num">1</div>
+          <div>
+            <strong>📝 Quick Add nutzen</strong>
+            <span>Tippe einfach drauf los: "Meeting vorbereiten", "Rechnung bezahlen"...</span>
+          </div>
+        </div>
+        <div class="onboarding-step">
+          <div class="num">2</div>
+          <div>
+            <strong>📧 Oder Gmails importieren</strong>
+            <span>Klicke auf "Gmail abrufen" und die KI analysiert automatisch</span>
+          </div>
+        </div>
+        <div class="onboarding-step">
+          <div class="num">3</div>
+          <div>
+            <strong>✅ Abarbeiten & feiern</strong>
+            <span>Die KI priorisiert für dich - du hackst einfach ab</span>
+          </div>
+        </div>
+      </div>
+      <button class="quick-btn primary" onclick="closeOnboarding()" style="padding:12px 32px;font-size:15px">Los geht's! 🚀</button>
+    </div>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+  </div>
+
+  <header>
+    <div class="logo">🎯 AI Assistant</div>
+    <div class="header-actions">
+      <div class="progress-badge" id="progressBadge">0/0 erledigt</div>
+      <button class="icon-btn" id="themeToggle" title="Dark Mode">🌙</button>
+      <button class="icon-btn" id="helpBtn" title="Hilfe">❓</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="suggestions" id="suggestions">
+      <div class="suggestions-title">💡 Smart Suggestion</div>
+      <div id="suggestionContent"></div>
+    </div>
+
+    <div class="quick-add-section" id="quickAddSection">
+      <div class="quick-add-title">🎯 Was steht heute an?</div>
+      <input 
+        type="text" 
+        class="quick-add-input" 
+        id="quickAddInput" 
+        placeholder="Einfach lostippen: 'Meeting vorbereiten', 'Zahnarzt anrufen'..."
+        autocomplete="off"
+      />
+      <div class="quick-actions">
+        <button class="quick-btn primary" id="quickAddBtn">✨ Hinzufügen</button>
+        <span style="color:var(--text-muted);font-size:13px;padding:8px">oder</span>
+        <button class="quick-btn" id="gmailBtn">📧 Gmail abrufen</button>
+        <button class="quick-btn" id="fileBtn">📂 Datei laden</button>
+        <input type="file" id="fileInput" style="display:none"/>
+      </div>
+    </div>
+
+    <div class="view-toggle">
+      <button class="view-btn active" data-view="cards">📋 Karten</button>
+      <button class="view-btn" data-view="timeline">📅 Timeline</button>
+    </div>
+
+    <div class="tasks-view" id="tasksView">
+      <div class="tasks" id="taskContainer">
+        <div class="empty-state">
+          <div class="emoji">🚀</div>
+          <h3>Bereit loszulegen?</h3>
+          <p>Füge deine erste Aufgabe hinzu oder lass die KI deine E-Mails analysieren</p>
+          <div class="quick-actions">
+            <button class="quick-btn primary" onclick="document.getElementById('quickAddInput').focus()">✨ Jetzt starten</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline" id="timelineView">
+      <div id="timelineContainer"></div>
+    </div>
+  </main>
+
+  <div class="shortcuts-hint" id="shortcutsHint">
+    Shortcuts: <kbd>Q</kbd> Quick Add | <kbd>E</kbd> Erledigt | <kbd>T</kbd> Timeline | <kbd>?</kbd> Hilfe
+  </div>
+
+  <script>
+    let allTasks=[];
+    let currentView="cards";
+    let isDark=localStorage.getItem("theme")==="dark";
+    const LS_KEY="aii_tasks_v1";
+    const LS_DONE="aii_tasks_done_v1";
+    const LS_ONBOARDING="aii_onboarding_seen";
+
+    if(!localStorage.getItem(LS_ONBOARDING)){
+      document.getElementById("onboarding").classList.add("show");
+    }
+
+    function closeOnboarding(){
+      document.getElementById("onboarding").classList.remove("show");
+      localStorage.setItem(LS_ONBOARDING,"true");
+      document.getElementById("quickAddInput").focus();
+      setTimeout(()=>{
+        document.getElementById("shortcutsHint").classList.add("show");
+        setTimeout(()=>document.getElementById("shortcutsHint").classList.remove("show"),5000);
+      },1000);
+    }
+
+    if(isDark){
+      document.documentElement.setAttribute("data-theme","dark");
+      document.getElementById("themeToggle").textContent="☀️";
+    }
+
+    document.getElementById("themeToggle").addEventListener("click",()=>{
+      isDark=!isDark;
+      document.documentElement.setAttribute("data-theme",isDark?"dark":"light");
+      document.getElementById("themeToggle").textContent=isDark?"☀️":"🌙";
+      localStorage.setItem("theme",isDark?"dark":"light");
+    });
+
+    document.getElementById("helpBtn").addEventListener("click",()=>{
+      document.getElementById("onboarding").classList.add("show");
+    });
+
+    document.querySelectorAll(".view-btn").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        document.querySelectorAll(".view-btn").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        currentView=btn.dataset.view;
+        if(currentView==="timeline"){
+          document.getElementById("tasksView").classList.add("hide");
+          document.getElementById("timelineView").classList.add("active");
+          renderTimeline();
+        }else{
+          document.getElementById("tasksView").classList.remove("hide");
+          document.getElementById("timelineView").classList.remove("active");
+        }
+      });
+    });
+
+    const quickAddInput=document.getElementById("quickAddInput");
+    const quickAddSection=document.getElementById("quickAddSection");
+    
+    quickAddInput.addEventListener("focus",()=>quickAddSection.classList.add("focus"));
+    quickAddInput.addEventListener("blur",()=>quickAddSection.classList.remove("focus"));
+    
+    quickAddInput.addEventListener("keydown",e=>{
+      if(e.key==="Enter"&&quickAddInput.value.trim()){
+        document.getElementById("quickAddBtn").click();
+      }
+    });
+
+    document.getElementById("quickAddBtn").addEventListener("click",async()=>{
+      const text=quickAddInput.value.trim();
+      if(!text)return;
+      showLoading(true);
+      await analyzeMessages([{source:"Quick Add",subject:"Schnelleingabe",text}]);
+      quickAddInput.value="";
+      showLoading(false);
+    });
+
+    document.getElementById("gmailBtn").addEventListener("click",async()=>{
+      showLoading(true);
+      try{
+        const res=await fetch("/api/fetch");
+        const data=await res.json();
+        if(!data.ok){
+          showToast("❌ Fehler beim Laden");
+          showLoading(false);
+          return;
+        }
+        const mails=data.gmail||[];
+        if(mails.length===0){
+          showToast("📭 Keine neuen Mails");
+          showLoading(false);
+          return;
+        }
+        showSuggestion(`Ich habe ${mails.length} E-Mails gefunden. Soll ich die analysieren?`,()=>{
+          const msgs=mails.map(m=>({source:"Gmail",subject:m.subject,text:m.snippet,from:m.from}));
+          analyzeMessages(msgs);
+        });
+        showLoading(false);
+      }catch(err){
+        showToast("❌ "+err.message);
+        showLoading(false);
+      }
+    });
+
+    document.getElementById("fileBtn").addEventListener("click",()=>{
+      document.getElementById("fileInput").click();
+    });
+
+    document.getElementById("fileInput").addEventListener("change",async(e)=>{
+      const file=e.target.files[0];
+      if(!file)return;
+      showLoading(true);
+      const fd=new FormData();
+      fd.append("file",file);
+      try{
+        const res=await fetch("/inbox/upload",{method:"POST",body:fd});
+        const data=await res.json();
+        showLoading(false);
+        if(!data.ok){
+          showToast("❌ "+data.error);
+          return;
+        }
+        allTasks=data.tasks||[];
+        persistTasks();
+        renderTasks();
+        showToast("✅ Datei analysiert!");
+      }catch(err){
+        showLoading(false);
+        showToast("❌ "+err.message);
+      }
+      e.target.value="";
+    });
+
+    async function analyzeMessages(msgs){
+      showLoading(true);
+      try{
+        const res=await fetch("/inbox/text",{
+          method:"POST",
+          headers:{"Content-Type":"application/x-www-form-urlencoded"},
+          body:"text="+encodeURIComponent(JSON.stringify(msgs))
+        });
+        const data=await res.json();
+        showLoading(false);
+        if(!data.ok){
+          showToast("❌ "+data.error);
+          return;
+        }
+        allTasks=data.tasks||[];
+        persistTasks();
+        renderTasks();
+        showToast("✅ Aufgaben erstellt!");
+        document.getElementById("suggestions").classList.remove("show");
+      }catch(err){
+        showLoading(false);
+        showToast("❌ "+err.message);
+      }
+    }
+
+    function showSuggestion(text,onAccept){
+      const content=document.getElementById("suggestionContent");
+      content.innerHTML=`
+        <div class="suggestion-item" onclick="acceptSuggestion()">
+          <span>${text}</span>
+          <span style="font-weight:700;color:var(--brand)">→</span>
+        </div>
+      `;
+      document.getElementById("suggestions").classList.add("show");
+      window.acceptSuggestion=()=>{
+        onAccept();
+        document.getElementById("suggestions").classList.remove("show");
+      };
+    }
+
+    function getDoneSet(){
+      const raw=localStorage.getItem(LS_DONE);
+      return new Set(raw?JSON.parse(raw):[]);
+    }
+
+    function setDoneSet(set){
+      localStorage.setItem(LS_DONE,JSON.stringify(Array.from(set)));
+    }
+
+    function hashTask(t){
+      return btoa(unescape(encodeURIComponent(`${t.title}|${t.priority}`))).slice(0,20);
+    }
+
+    function persistTasks(){
+      localStorage.setItem(LS_KEY,JSON.stringify(allTasks));
+    }
+
+    function updateProgress(){
+      const done=getDoneSet();
+      const pending=allTasks.filter(t=>!done.has(hashTask(t)));
+      const total=allTasks.length;
+      const doneCount=total-pending.length;
+      document.getElementById("progressBadge").textContent=`${doneCount}/${total} erledigt`;
+    }
+
+    function renderTasks(){
+      const done=getDoneSet();
+      let items=allTasks.filter(t=>!done.has(hashTask(t)));
+      items.sort((a,b)=>a.priority-b.priority||a.effort_minutes-b.effort_minutes);
+      
+      const container=document.getElementById("taskContainer");
+      
+      if(items.length===0){
+        container.innerHTML='<div class="empty-state"><div class="emoji">🚀</div><h3>Bereit loszulegen?</h3><p>Füge deine erste Aufgabe hinzu oder lass die KI deine E-Mails analysieren</p><div class="quick-actions"><button class="quick-btn primary" onclick="document.getElementById(\'quickAddInput\').focus()">✨ Jetzt starten</button></div></div>';
+      }else{
+        container.innerHTML=items.map(renderTask).join("");
+        bindTaskActions();
+      }
+      updateProgress();
+    }
+
+    function renderTask(t){
+      const icons={1:"🔴",2:"🟡",3:"🟢"};
+      const labels={1:"Dringend",2:"Wichtig",3:"Später"};
+      const cls={1:"p1",2:"p2",3:"p3"};
+      return `
+        <div class="task priority-${t.priority}" data-id="${hashTask(t)}">
+          <div class="task-header">
+            <div class="task-icon">${icons[t.priority]}</div>
+            <div class="task-content">
+              <div class="task-title">${t.title}</div>
+              <div class="task-meta">
+                <span class="badge ${cls[t.priority]}">${labels[t.priority]}</span>
+                <span class="badge time">⏱️ ${t.effort_minutes||30}m</span>
+                ${t.due?`<span class="badge">📅 ${t.due}</span>`:""}
+              </div>
+            </div>
+          </div>
+          <div class="task-reason">📌 ${t.reason||"—"}</div>
+          <div class="task-actions">
+            <button class="task-btn done" data-action="done">✅ Done</button>
+            <button class="task-btn snooze" data-action="snooze">⏰ 2h</button>
+            <button class="task-btn" data-action="schedule">📋</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function bindTaskActions(){
+      document.querySelectorAll(".task").forEach(el=>{
+        el.querySelectorAll(".task-btn").forEach(btn=>{
+          btn.addEventListener("click",e=>{
+            e.stopPropagation();
+            const action=btn.dataset.action;
+            const id=el.dataset.id;
+            const task=allTasks.find(t=>hashTask(t)===id);
+            
+            if(action==="done"){
+              markDone(id,el);
+            }else if(action==="snooze"){
+              showToast("⏰ Erinnere dich in 2 Stunden");
+              setTimeout(()=>showToast(`🔔 Erinnerung: ${task.title}`),100);
+            }else if(action==="schedule"){
+              const txt=`${task.title}\n⏱️ ${task.effort_minutes} Min\n📌 ${task.reason}`;
+              navigator.clipboard.writeText(txt);
+              showToast("📋 Kopiert!");
+            }
+          });
+        });
+      });
+    }
+
+    function markDone(id,el){
+      const set=getDoneSet();
+      set.add(id);
+      setDoneSet(set);
+      el.classList.add("celebrating");
+      setTimeout(()=>{
+        el.classList.add("removing");
+        showToast("🎉 Sehr gut!");
+        setTimeout(()=>{
+          renderTasks();
+        },200);
+      },500);
+    }
+
+    function renderTimeline(){
+      const done=getDoneSet();
+      let items=allTasks.filter(t=>!done.has(hashTask(t)));
+      items.sort((a,b)=>a.priority-b.priority);
+      
+      const container=document.getElementById("timelineContainer");
+      let html="";
+      let currentHour=8;
+      
+      items.forEach(t=>{
+        const h=Math.floor(currentHour);
+        const m=(currentHour%1)*60;
+        html+=`
+          <div class="timeline-hour">${String(h).padStart(2,'0')}:${String(Math.round(m)).padStart(2,'0')}</div>
+          <div class="timeline-item ${t.priority===1?'urgent':t.priority===2?'important':''}">
+            <strong>${t.title}</strong>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px">
+              ⏱️ ${t.effort_minutes||30} Min · ${t.reason||""}
+            </div>
+          </div>
+        `;
+        currentHour+=(t.effort_minutes||30)/60;
+      });
+      
+      container.innerHTML=html||"<div style='text-align:center;color:var(--text-muted);padding:40px'>Keine Aufgaben für heute</div>";
+    }
+
+    function showLoading(show){
+      document.getElementById("loadingOverlay").classList.toggle("show",show);
+    }
+
+    function showToast(msg){
+      const toast=document.createElement("div");
+      toast.className="toast";
+      toast.textContent=msg;
+      document.body.appendChild(toast);
+      setTimeout(()=>toast.remove(),3000);
+    }
+
+    document.addEventListener("keydown",e=>{
+      if(e.target.tagName==="INPUT")return;
+      
+      if(e.key==="q"||e.key==="Q"){
+        document.getElementById("quickAddInput").focus();
+      }else if(e.key==="e"||e.key==="E"){
+        const first=document.querySelector(".task");
+        if(first){
+          const id=first.dataset.id;
+          markDone(id,first);
+        }
+      }else if(e.key==="t"||e.key==="T"){
+        document.querySelector('[data-view="timeline"]').click();
+      }else if(e.key==="?"){
+        document.getElementById("helpBtn").click();
+      }
+    });
+
+    // Seite startet IMMER leer - keine Tasks beim Laden
+  </script>
+</body>
+</html>

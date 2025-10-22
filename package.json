@@ -1,0 +1,40 @@
+{
+  "name": "ai-assistant-mvp",
+  "version": "2.0.0",
+  "description": "AI-powered inbox assistant with task prioritization",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js",
+    "prod": "NODE_ENV=production node server.js"
+  },
+  "keywords": [
+    "ai",
+    "assistant",
+    "inbox",
+    "productivity",
+    "openai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "googleapis": "^164.1.0",
+    "multer": "^2.0.2",
+    "openai": "^6.6.0"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emilianbuza/ai-assistant-mvp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/emilianbuza/ai-assistant-mvp/issues"
+  }
+}
