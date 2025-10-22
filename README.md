@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI Inbox Assistant MVP v2.0
 
 Production-ready AI-powered inbox assistant mit Task-Priorisierung, Security Best Practices und modularer Architektur.
@@ -155,3 +156,6 @@ MIT
 ## 🤝 Contributing
 
 Pull Requests willkommen! Bitte Tests und Dokumentation beilegen.
+=======
+# Owner-avatar-ai-assistant-mvp_v2
+>>>>>>> 8e20eb7fdf7d4a9489085f877e4d722530254223
